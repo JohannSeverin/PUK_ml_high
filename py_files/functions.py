@@ -136,13 +136,13 @@ def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax
                 max_size = 1 * args[2]
 
     sigs, bkgrs, errs = np.array(sigs), np.array(bkgrs), np.array(errs)
-    x = sigs/sigs.max()
-    y = bkgrs/bkgrs.max()
+    y = sigs/sigs.max()
+    x = bkgrs/bkgrs.max()
 
 #     x = np.append(x, 0)[::-1]
 #     y = np.append(y, 0)[::-1]
 
-    print(f"AUC estimate = {np.trapz(y[y<=1], x[y<=1]):.4f}")
+    AUC_estimate = np.trapz(np.append(x, 0), np.append(y, 0))
 
 #     x_errs = np.sqrt((errs/sigs.max()) ** 2 + (errs[sigs.argmax()] * sigs / sigs.max() ** 2) ** 2)
 #     y_errs = np.sqrt((errs/bkgrs.max()) ** 2 + (errs[bkgrs.argmax()] * bkgrs / bkgrs.max() ** 2) ** 2)
@@ -151,7 +151,8 @@ def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax
         ax_roc.scatter(x, y, c = colors)
 #         ax_roc.errorbar(x[:-1], y[:-1], x_errs, y_errs, elinewidth = 1, capsize = 2, color = 'k', ls = 'none')
         ax_roc.set(xlim = (-0.2, 1.2), ylim = (-0.2, 1.2))
-
+    
+    return AUC_estimate
 
 
 

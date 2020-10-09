@@ -149,6 +149,8 @@ def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax
     
     if ax_roc:
         ax_roc.scatter(x, y, c = colors)
+        ax_roc.vlines([0,1], 0, 1, ls = '--', color = "gray", zorder = -1)
+        ax_roc.hlines([0,1], 0, 1, ls = '--', color = "gray", zorder = -1)
 #         ax_roc.errorbar(x[:-1], y[:-1], x_errs, y_errs, elinewidth = 1, capsize = 2, color = 'k', ls = 'none')
         ax_roc.set(xlim = (-0.2, 1.2), ylim = (-0.2, 1.2))
     

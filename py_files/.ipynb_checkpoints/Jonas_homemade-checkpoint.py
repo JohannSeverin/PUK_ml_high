@@ -147,7 +147,7 @@ from AppStatFunctions import Chi2Regression, nice_string_output, add_text_to_ax
 from scipy.optimize import curve_fit
 from scipy.stats import norm, chi2
 
-def fit_mass2(xs, vals, errs, ax = None, guesses_bkgr = [0, 0, -10, 2000], guesses_sig = [497, 6, 17000],plot=True,type='ks'):
+def fit_mass2(xs, vals, errs, ax = None, guesses_bkgr = [0, 0, -10, 2000], guesses_sig = [498, 6, 17000],plot=True,type='ks'):
     guesses_bkgr[-1] = 0.5*(vals[0] + vals[-1])
     guesses_sig[-1] = 20*max(vals)#np.sqrt(2*np.pi*guesses_sig[1]**2)*(max(vals))# - guesses_bkgr[-1])
     
@@ -177,11 +177,8 @@ def fit_mass2(xs, vals, errs, ax = None, guesses_bkgr = [0, 0, -10, 2000], guess
         bkgr_mask = (xs < 475) | (xs > 525)
     elif type == 'la':
         bkgr_mask = abs(xs - 1117) > 5
-    try:
-        vals_b, cov_b = curve_fit(background_fit, xs[bkgr_mask], vals[bkgr_mask], p0 = guesses_bkgr)
-        b1, b2, b3, b4 = vals_b
-    except:
-        b1, b2, b3, b4 = guesses_bkgr
+    vals_b, cov_b = curve_fit(background_fit, xs[bkgr_mask], vals[bkgr_mask], p0 = guesses_bkgr)
+    b1, b2, b3, b4 = vals_b
     bkgr_chi2 = Chi2Regression(background_fit, xs[bkgr_mask], vals[bkgr_mask], errs[bkgr_mask])
     bkgr_min  = Minuit(bkgr_chi2, pedantic = False, a = b1, b = b2, c = b3, d = b4)
 
@@ -275,21 +272,21 @@ def fit_mass2(xs, vals, errs, ax = None, guesses_bkgr = [0, 0, -10, 2000], guess
     return {'M': full_min,'sig': sig_amount,'bkgr': bak_amount,'neg_bkgr': neg_bkgr,
                'sig_func': signal(), 'bkgr_func': background()}
 
-def assign_pseudolabels(train_data,type='ks',bins=100):
+def assign_pseudolabels(train_data,type='ks'):
     if type == 'ks':
         mass = train_data.v0_ks_mass
     elif type == 'la':
         mass = train_data.v0_la_mass
-    vals, binc, binw = hist(mass,bins=bins)
+    vals, binc, binw = hist(mass,bins=100)
     d = fit_mass2(binc,vals,np.sqrt(vals),type=type)
     fig, ax, M, sig, bkgr = d['fig'], d['ax'], d['M'], d['sig'], d['bkgr']
     
     mean, sigma = M.values['mean'], M.values['sig']
     if type == 'ks':
-        signal = train_data.loc[(mass > mean - 2*sigma) & (mass < mean + 2*sigma)]
+        signal = train_data.loc[(mass > mean - sigma) & (mass < mean + sigma)]
         bkgr_l = train_data.loc[(mass > mean - 15*sigma) & (mass < mean - 10*sigma)]
         bkgr_r = train_data.loc[(mass > mean + 10*sigma) & (mass < mean + 15*sigma)]
-        ax[0].vlines([mean-2*sigma,mean+2*sigma,mean-15*sigma,mean-10*sigma,mean+10*sigma,mean+15*sigma],min(vals),max(vals))
+        ax[0].vlines([mean-sigma,mean+sigma,mean-15*sigma,mean-10*sigma,mean+10*sigma,mean+15*sigma],min(vals),max(vals))
     elif type =='la':
         signal = train_data.loc[(mass > mean - sigma) & (mass < mean + sigma)]
         bkgr_l = train_data.loc[(mass > mean - 7*sigma) & (mass < mean - 3*sigma)]
@@ -498,14 +495,14 @@ def double_gauss_fit(mass, bins = 100, range = (400, 600), ax = None, verbose = 
 def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax_roc = None , ax_fits = None, verbose = True, plimit = 0.01, ax_hist = None,type='ks'):
     sigs, bkgrs, errs = [], [], []
     mass = np.array(mass)
-    mass = mass[np.argsort(probs)[::-1]]
+    mass = mass[np.argsort(probs)]
     cuts = (len(mass) / Npoints * np.arange(0, Npoints)).astype(int)
     args = None
     max_size = None
     from matplotlib.cm import winter, plasma
     colors = winter(np.linspace(0, 1, Npoints)[::-1])
     from scipy.special import logit
-    lprobs = np.sort(logit(probs))[::-1]
+    lprobs = np.sort(logit(probs))
     if ax_hist:
         n, edges, patches = ax_hist.hist(lprobs, bins = bins, histtype = 'stepfilled', color = 'gray')
 #         print(n)
@@ -519,18 +516,18 @@ def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax
             bkgrs.append(bkgr)
             sigs.append(sig)
             errs.append(err)
-            max_size = max(1.5*sig,100)
+            max_size = max(1.5*sig,0.1)
 #             if len(sigs) == 1:
 #                 max_size = 1.05 * sig
 
     sigs, bkgrs, errs = np.array(sigs), np.array(bkgrs), np.array(errs)
-    y = 1-sigs/sigs.max()
-    x = 1-bkgrs/bkgrs.max()
+    x = sigs/sigs.max()
+    y = bkgrs/bkgrs.max()
 
 #     x = np.append(x, 0)[::-1]
 #     y = np.append(y, 0)[::-1]
 
-    AUC_estimate = np.trapz(np.append(x, 1), np.append(y, 1))
+    AUC_estimate = np.trapz(np.append(x, 0), np.append(y, 0))
 
 #     x_errs = np.sqrt((errs/sigs.max()) ** 2 + (errs[sigs.argmax()] * sigs / sigs.max() ** 2) ** 2)
 #     y_errs = np.sqrt((errs/bkgrs.max()) ** 2 + (errs[bkgrs.argmax()] * bkgrs / bkgrs.max() ** 2) ** 2)
@@ -542,43 +539,4 @@ def roc_curve_data(mass, probs, Npoints = 10, bins = 100, range = (400, 600), ax
         ax_roc.vlines([0,1],0,1,ls='--',color='gray',zorder=-1)
         ax_roc.hlines([0,1],0,1,ls='--',color='gray',zorder=-1)
         
-    return AUC_estimate, cuts, x, y
-
-def weighted_mean(x, errs, ax = None, plot_ticks = None, point_label=None, coords = (0.1, 0.9), dec = 3):
-    """
-    This function takes as input measurents and errors and returns the weighted mean along with the error.
-    The weighted mean is calculated by doing a Chi-Square fit with a constant.
-    if ax is given, the function will plot the fit, data and errors on it. 
-    The function return weighted_mean, err, and a dictionairy with chi-square value and p-value
-    """
-    def constant(x, k): return k
-    from AppStatFunctions import Chi2Regression, nice_string_output, add_text_to_ax
-    
-    ticks = np.arange(len(x))
-
-    chi2_object = Chi2Regression(constant, ticks, x, errs)
-    chi2_min = Minuit(chi2_object, pedantic = False)
-    chi2_min.migrad()
-
-    Chi2 = chi2_min.fval
-    p_val = chi2.sf(Chi2, len(x)-1)
-    k = chi2_min.args[0]
-    err = chi2_min.errors[0]
-
-
-    if ax:
-        if type(plot_ticks) != type(None):
-            ticks = plot_ticks
-        ax.plot(ticks, x, 'r.',label=point_label)
-        ax.errorbar(ticks, x, errs, c = 'k', elinewidth = 1, \
-                       capsize = 2, ls = 'none')
-        ax.hlines(k, min(ticks), max(ticks), ls = '--', label = "Weighted mean")
-        d = {"chisquare":   Chi2, \
-             "p:":           p_val, \
-             "mean:":        k,\
-             "mean_err":     err}
-
-        add_text_to_ax(*coords, nice_string_output(d, decimals=dec), ax, fontsize = 10)
-        ax.legend()
-
-    return k, err, {"chi2": Chi2, "p": p_val}
+    return AUC_estimate, cuts
